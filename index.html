@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Quiz Game with Dark Mode</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #eef2f7;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+      transition: background 0.4s, color 0.4s;
+    }
+
+    .quiz-container {
+      background: white;
+      padding: 30px;
+      border-radius: 16px;
+      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+      width: 500px;
+      text-align: center;
+      transition: background 0.4s, color 0.4s;
+    }
+
+    h1 {
+      margin-bottom: 15px;
+    }
+
+    select, button {
+      padding: 12px;
+      margin: 10px 0;
+      font-size: 16px;
+      width: 80%;
+      border-radius: 8px;
+      border: none;
+    }
+
+    .question {
+      font-size: 20px;
+      margin: 20px 0;
+    }
+
+    .options button {
+      display: block;
+      width: 100%;
+      margin: 8px 0;
+      padding: 12px;
+      font-size: 16px;
+      background: #e2e8f0;
+      border-radius: 8px;
+      cursor: pointer;
+      border: none;
+      transition: background 0.3s;
+    }
+
+    .options button:hover {
+      background: #cbd5e1;
+    }
+
+    .feedback {
+      margin-top: 12px;
+      font-weight: bold;
+    }
+
+    .score, .timer {
+      margin-top: 15px;
+      font-size: 18px;
+    }
+
+    .restart-btn {
+      background-color: #3b82f6;
+      color: white;
+    }
+
+    /* Toggle Switch */
+    .toggle-switch {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+    }
+
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 60px;
+      height: 32px;
+    }
+
+    .switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0; left: 0;
+      right: 0; bottom: 0;
+      background-color: #ccc;
+      transition: 0.4s;
+      border-radius: 34px;
+    }
+
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 24px; width: 24px;
+      left: 4px;
+      bottom: 4px;
+      background-color: white;
+      transition: 0.4s;
+      border-radius: 50%;
+    }
+
+    input:checked + .slider {
+      background-color: #0d9488;
+    }
+
+    input:checked + .slider:before {
+      transform: translateX(26px);
+    }
+
+    /* DARK MODE STYLES */
+    .dark-mode {
+      background: #0f172a;
+      color: #f1f5f9;
+    }
+
+    .dark-mode .quiz-container {
+      background: #1e293b;
+      color: #f8fafc;
+    }
+
+    .dark-mode select,
+    .dark-mode .options button,
+    .dark-mode button {
+      background: #334155;
+      color: white;
+    }
+
+    .dark-mode .options button:hover {
+      background: #475569;
+    }
+
+    .dark-mode .restart-btn {
+      background: #14b8a6;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 🌙 Toggle Button -->
+  <div class="toggle-switch">
+    <label class="switch">
+      <input type="checkbox" onclick="toggleDarkMode()">
+      <span class="slider"></span>
+    </label>
+  </div>
+
+  <div class="quiz-container">
+    <h1>Quiz Game</h1>
+    <select id="categorySelect">
+      <option value="">-- Select Category --</option>
+      <option value="general">General Knowledge</option>
+      <option value="science">Science</option>
+      <option value="math">Math</option>
+    </select>
+    <button onclick="startQuiz()">Start Quiz</button>
+
+    <div class="question" id="questionText"></div>
+    <div class="options" id="optionsContainer"></div>
+    <div class="feedback" id="feedback"></div>
+    <div class="timer" id="timer"></div>
+    <div class="score" id="score"></div>
+    <button class="restart-btn" onclick="restartQuiz()" style="display:none;" id="restartBtn">Restart Quiz</button>
+  </div>
+
+  <script>
+    const questionsByCategory = {
+      general: [
+        { question: "What is the capital of India?", options: ["Delhi", "Mumbai", "Kolkata", "Chennai"], answer: "Delhi" },
+        { question: "Which country invented tea?", options: ["India", "China", "England", "Nepal"], answer: "China" },
+        { question: "Which is the national bird of India?", options: ["Parrot", "Peacock", "Sparrow", "Eagle"], answer: "Peacock" }
+      ],
+      science: [
+        { question: "What planet is known as the Red Planet?", options: ["Mars", "Venus", "Jupiter", "Saturn"], answer: "Mars" },
+        { question: "Which gas do plants absorb?", options: ["O2", "CO2", "N2", "H2"], answer: "CO2" },
+        { question: "What is H2O?", options: ["Water", "Oxygen", "Hydrogen", "Salt"], answer: "Water" }
+      ],
+      math: [
+        { question: "What is 12 x 12?", options: ["144", "132", "124", "142"], answer: "144" },
+        { question: "Square root of 81?", options: ["8", "9", "7", "6"], answer: "9" },
+        { question: "What is 7 + 13?", options: ["19", "20", "21", "22"], answer: "20" }
+      ]
+    };
+
+    let currentQuestionIndex = 0;
+    let score = 0;
+    let selectedCategory = "";
+    let questions = [];
+    let timer;
+    let timeLeft = 60;
+
+    const questionText = document.getElementById("questionText");
+    const optionsContainer = document.getElementById("optionsContainer");
+    const feedback = document.getElementById("feedback");
+    const scoreDisplay = document.getElementById("score");
+    const timerDisplay = document.getElementById("timer");
+    const restartBtn = document.getElementById("restartBtn");
+
+    function startQuiz() {
+      selectedCategory = document.getElementById("categorySelect").value;
+      if (!selectedCategory) {
+        alert("Please select a category!");
+        return;
+      }
+
+      questions = [...questionsByCategory[selectedCategory]];
+      currentQuestionIndex = 0;
+      score = 0;
+      scoreDisplay.textContent = `Score: 0`;
+      restartBtn.style.display = "none";
+      loadQuestion();
+    }
+
+    function loadQuestion() {
+      clearInterval(timer);
+      timeLeft = 60;
+      updateTimer();
+      startTimer();
+
+      const currentQuestion = questions[currentQuestionIndex];
+      questionText.textContent = currentQuestion.question;
+      optionsContainer.innerHTML = "";
+      currentQuestion.options.forEach(option => {
+        const btn = document.createElement("button");
+        btn.textContent = option;
+        btn.onclick = () => checkAnswer(option);
+        optionsContainer.appendChild(btn);
+      });
+
+      feedback.textContent = "";
+    }
+
+    function checkAnswer(selected) {
+      clearInterval(timer);
+      const correct = questions[currentQuestionIndex].answer;
+
+      if (selected === correct) {
+        score += 1;
+        feedback.textContent = "✅ Correct!";
+        feedback.style.color = "limegreen";
+      } else {
+        feedback.textContent = "❌ Wrong!";
+        feedback.style.color = "tomato";
+      }
+
+      scoreDisplay.textContent = `Score: ${score}`;
+
+      setTimeout(() => {
+        currentQuestionIndex++;
+        if (currentQuestionIndex < questions.length) {
+          loadQuestion();
+        } else {
+          showResult();
+        }
+      }, 1000);
+    }
+
+    function startTimer() {
+      timer = setInterval(() => {
+        timeLeft--;
+        updateTimer();
+        if (timeLeft === 0) {
+          clearInterval(timer);
+          feedback.textContent = "⏰ Time's up!";
+          feedback.style.color = "orange";
+          setTimeout(() => {
+            currentQuestionIndex++;
+            if (currentQuestionIndex < questions.length) {
+              loadQuestion();
+            } else {
+              showResult();
+            }
+          }, 1000);
+        }
+      }, 1000);
+    }
+
+    function updateTimer() {
+      timerDisplay.textContent = `⏱ Time Left: ${timeLeft}s`;
+    }
+
+    function showResult() {
+      questionText.textContent = "🎉 Quiz Completed!";
+      optionsContainer.innerHTML = "";
+      feedback.textContent = `Final Score: ${score}/${questions.length}`;
+      timerDisplay.textContent = "";
+      restartBtn.style.display = "inline-block";
+    }
+
+    function restartQuiz() {
+      score = 0;
+      scoreDisplay.textContent = "Score: 0";
+      startQuiz();
+    }
+
+    function toggleDarkMode() {
+      document.body.classList.toggle("dark-mode");
+    }
+  </script>
+
+</body>
+</html>
